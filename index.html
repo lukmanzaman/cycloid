@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="id" prefix="og: https://ogp.me/ns#">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cycloid V5 — Mechanical Generative Art & Harmonic Spirograph Simulator</title>
+
+  <!-- Primary Meta Tags -->
+  <meta name="title" content="Cycloid V5 — Mechanical Generative Art & Harmonic Spirograph Simulator" />
+  <meta name="description" content="Simulator mesin gambar harmonik geometris (Cycloid Drawing Machine) interaktif berbasis web. Simulasi roda gigi mekanik, tuas penghubung, dan pola kurva guilloché parametrik langsung di browser tanpa instalasi." />
+  <meta name="keywords" content="cycloid, spirograph, generative art, guilloche, drawing machine, processing, p5js, harmonic patterns, kinematic simulation, jim bumgardner, istts" />
+  <meta name="author" content="ISTTS / Jim Bumgardner" />
+  <meta name="theme-color" content="#0f1117" />
+  <meta name="color-scheme" content="dark" />
+
+  <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="./" />
+  <meta property="og:site_name" content="Cycloid V5 Simulator" />
+  <meta property="og:title" content="Cycloid V5 — Mechanical Generative Art & Harmonic Spirograph Simulator" />
+  <meta property="og:description" content="Eksplorasi simulator mesin gambar harmonik geometris interaktif. Desain mekanisme roda gigi, tuas penghubung, dan buat pola guilloché memukau secara instan." />
+  <meta property="og:image" content="og-thumb.png" />
+  <meta property="og:image:secure_url" content="og-thumb.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Cycloid V5 - Mechanical Generative Art & Harmonic Spirograph Simulator Preview Card" />
+
+  <!-- Twitter / X Cards -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="./" />
+  <meta name="twitter:title" content="Cycloid V5 — Mechanical Generative Art & Harmonic Spirograph Simulator" />
+  <meta name="twitter:description" content="Simulator mesin gambar harmonik geometris interaktif. Eksplorasi mekanisme roda gigi & pola guilloché secara instan langsung di browser!" />
+  <meta name="twitter:image" content="og-thumb.png" />
+  <meta name="twitter:image:alt" content="Cycloid V5 Simulator Preview" />
+
+  <!-- Favicon Icons -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="icon" type="image/png" sizes="512x512" href="favicon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="favicon.png" />
+  <style>
+    :root {
+      --bg: #0f1117;
+      --card-bg: #181b24;
+      --border: #262b3a;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --pink: #ec4899;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #38bdf8, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand .tag {
+      font-size: 0.72rem;
+      background: #1e293b;
+      color: #38bdf8;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    .header-links {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .header-links a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .main-container {
+      display: flex;
+      flex: 1;
+      padding: 16px;
+      gap: 16px;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @media (max-width: 1024px) {
+      .main-container {
+        flex-direction: column;
+      }
+    }
+
+    /* CANVAS WORKSPACE */
+    .workspace {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 14px;
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 800px;
+      aspect-ratio: 1 / 1;
+      background: #dfded8;
+      border-radius: 12px;
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      overflow: hidden;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #paperCanvas {
+      z-index: 1;
+    }
+
+    #overlayCanvas {
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* TOOLBAR */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      padding: 10px 16px;
+      border-radius: 10px;
+      width: 100%;
+      max-width: 800px;
+    }
+
+    .btn {
+      background: #222736;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      background: #2d3345;
+      border-color: #3b4257;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0f172a;
+      border-color: var(--accent);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .btn-pink {
+      background: var(--pink);
+      color: #fff;
+      border-color: var(--pink);
+    }
+
+    .btn-pink:hover {
+      background: #db2777;
+    }
+
+    .stat-pill {
+      font-size: 0.78rem;
+      background: #11141e;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid #232839;
+      color: var(--text-muted);
+    }
+
+    .stat-pill strong {
+      color: var(--accent);
+    }
+
+    /* SIDEBAR CONTROLS */
+    .sidebar {
+      width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    @media (max-width: 1024px) {
+      .sidebar {
+        width: 100%;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .select, input[type="text"] {
+      width: 100%;
+      background: #12151f;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-size: 0.86rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .select:focus, input[type="text"]:focus {
+      border-color: var(--accent);
+    }
+
+    .code-input-wrapper {
+      display: flex;
+      gap: 8px;
+    }
+
+    .code-input-wrapper input {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.8rem;
+    }
+
+    /* DYNAMIC SLIDERS CONTAINER */
+    .sliders-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .sliders-container::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .sliders-container::-webkit-scrollbar-thumb {
+      background: #2b3247;
+      border-radius: 3px;
+    }
+
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: #12151f;
+      border: 1px solid #1f2433;
+      padding: 8px 12px;
+      border-radius: 6px;
+    }
+
+    .slider-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .slider-label-row span.val {
+      color: var(--text);
+      font-weight: 600;
+      font-family: monospace;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .checkbox-row input {
+      cursor: pointer;
+    }
+
+    .color-options {
+      display: flex;
+      gap: 8px;
+    }
+
+    .color-pill {
+      flex: 1;
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #12151f;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 0.78rem;
+      transition: all 0.15s;
+    }
+
+    .color-pill.active {
+      border-color: var(--accent);
+      background: #1e2638;
+      color: #fff;
+    }
+
+    .color-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .footer-notes {
+      font-size: 0.75rem;
+      color: #64748b;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <img src="favicon.svg" alt="Cycloid Logo" width="34" height="34" style="border-radius: 8px; box-shadow: 0 0 14px rgba(56, 189, 248, 0.4); display: block;" />
+      <h1>Cycloid V5</h1>
+      <span class="tag">Web Simulator</span>
+      <span class="tag" style="color: #ec4899; border-color: rgba(236, 72, 153, 0.3)">Pure JS / No Install</span>
+    </div>
+    <div class="header-links">
+      Berdasarkan Jim Bumgardner's Cycloid Drawing Machine &bull; Original Processing PDE oleh ISTTS
+    </div>
+  </header>
+
+  <div class="main-container">
+    <!-- LEFT: WORKSPACE / CANVASES -->
+    <div class="workspace">
+      <div class="canvas-wrapper" id="canvasWrapper">
+        <canvas id="paperCanvas" width="800" height="800"></canvas>
+        <canvas id="overlayCanvas" width="800" height="800"></canvas>
+      </div>
+
+      <!-- WORKSPACE TOOLBAR -->
+      <div class="toolbar">
+        <button class="btn btn-primary" id="btnPlayPause">
+          <span id="playIcon">&#9654;</span> <span id="playText">Play</span>
+        </button>
+        <button class="btn btn-pink" id="btnBake" title="Kalkulasi instan seluruh putaran siklus">
+          ⚡ Bake (Instan)
+        </button>
+        <button class="btn" id="btnReset">
+          ↺ Reset
+        </button>
+        <button class="btn" id="btnExport">
+          💾 Simpan PNG
+        </button>
+
+        <label class="checkbox-row" style="margin-left: 8px;">
+          <input type="checkbox" id="chkShowRig" checked />
+          Tampilkan Mesin
+        </label>
+
+        <div class="stat-pill">
+          Frame: <strong id="lblFrame">0</strong> / <span id="lblMaxFrame">0</span>
+        </div>
+        <div class="stat-pill">
+          Siklus: <strong id="lblCycles">0</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: CONTROLS & RIG DSL -->
+    <div class="sidebar">
+      
+      <!-- PRESET PICKER -->
+      <div class="card">
+        <div class="card-title">
+          <span>Preset Pola Bawaan</span>
+          <span style="font-size: 0.72rem; color: var(--text-muted);">8 Mesin</span>
+        </div>
+        <select class="select" id="selPreset">
+          <option value="Ga150 Gb100 Mba180 Gc50 Mca270 Czb80c70 Pzx150y-300s90 Z5">1. 2-Gear Rod Default</option>
+          <option value="Ga150 Lpx100y100 Gb50 Mba270 Ccp0b75 Pcx150y-350s90 Z5">2. 1 Pivot Anchor ke 1 Gear</option>
+          <option value="Ga150 Gb100 Mba180 Gc50 Mca270 Czb80c70i Pzx350y300s90 Z5">3. 2-Gear Rod (Inverted)</option>
+          <option value="Ga150 Gb100 Mba180 Gc50 Mca270 Gd50 Mdc0 Dc Czb80d70 Pzx250y-300s90 Z5">4. Gear Antara (Idler Gear / Balik Arah)</option>
+          <option value="Ga150 Gb100 Mba45 Gc50 Mca300 Gd50 Mdc30 Dc Cpd80b80 Lqx100y200 Crp250q0 Prx550y260s90 Z5">5. Rangka 2 Batang Rod</option>
+          <option value="Ga150 Gb100 Mba45 Gc80 Mca315 Ldx100y200 Lex100y800 Cfdc80 Cgeb80 Chf450g450 Phx250y200s90 Z5">6. Rangka 3 Batang Rod</option>
+          <option value="Ga120 Gb100 Gc80 Mca30 Mbc280 Dc Gd50 Ge50 Sdb Oed Lfx100y200 Cgfe80 Pgx450y-250s90 Z5">7. Orbital Gear ke Point</option>
+          <option value="Ga150 Gb80 Mba230 Gc40 Mcb120 Db Gd80 Mda45 Dd Ge80 Med300 Gf40 Gg40 Sfe Ogf Chc50g50 Phx400y100s-60 Z5">8. Orbital Gear ke Gear</option>
+        </select>
+      </div>
+
+      <!-- CODE DSL RIG INPUT -->
+      <div class="card">
+        <div class="card-title">
+          <span>Formula String RIG</span>
+          <button class="btn" style="padding: 3px 8px; font-size: 0.72rem;" id="btnCopyRig">Salin</button>
+        </div>
+        <div class="code-input-wrapper">
+          <input type="text" id="txtRig" value="Ga150 Gb100 Mba180 Gc50 Mca270 Czb80c70 Pzx150y-300s90 Z5" spellcheck="false" />
+          <button class="btn btn-primary" id="btnApplyRig">Terapkan</button>
+        </div>
+        <div style="font-size: 0.72rem; color: #64748b;">
+          Sintaks: <code>G[id][gigi]</code>, <code>M[g1][g2][sudut]</code>, <code>C[id][p1][r1][p2][r2][i]</code>, <code>P[rod]x[x]y[y]s[sudut]</code>, <code>L[id]x[x]y[y]</code>, <code>Z[speed]</code>
+        </div>
+      </div>
+
+      <!-- VISUAL & COLOR SETTINGS -->
+      <div class="card">
+        <div class="card-title">
+          <span>Palet Warna & Tampilan</span>
+        </div>
+        <div class="color-options">
+          <div class="color-pill active" data-palette="1">
+            <span class="color-dot" style="background:#000;"></span>
+            <span class="color-dot" style="background:#D80B53;"></span>
+            <span class="color-dot" style="background:#029BD1;"></span>
+            <span>C1</span>
+          </div>
+          <div class="color-pill" data-palette="2">
+            <span class="color-dot" style="background:#000;"></span>
+            <span class="color-dot" style="background:#077EDE;"></span>
+            <span>C2</span>
+          </div>
+          <div class="color-pill" data-palette="3">
+            <span class="color-dot" style="background:#F06FD2;"></span>
+            <span class="color-dot" style="background:#52E88C;"></span>
+            <span>C3</span>
+          </div>
+          <div class="color-pill" data-palette="4">
+            <span class="color-dot" style="background:#F59E0B;"></span>
+            <span class="color-dot" style="background:#EC4899;"></span>
+            <span class="color-dot" style="background:#8B5CF6;"></span>
+            <span>C4</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 4px;">
+          <div style="flex: 1;">
+            <div class="slider-label-row">
+              <span>Kecepatan Animasi</span>
+              <span class="val" id="lblSpeed">5x</span>
+            </div>
+            <input type="range" id="rngSpeed" min="1" max="15" value="5" />
+          </div>
+          <div style="flex: 1;">
+            <div class="slider-label-row">
+              <span>Ketebalan Tinta</span>
+              <span class="val" id="lblWeight">1.0</span>
+            </div>
+            <input type="range" id="rngWeight" min="0.5" max="3.5" step="0.5" value="1.0" />
+          </div>
+        </div>
+      </div>
+
+      <!-- REALTIME RIG SLIDERS (MIRIP CONTROL P5 DI PDE) -->
+      <div class="card" style="flex: 1;">
+        <div class="card-title">
+          <span>Parameter Interaktif RIG</span>
+          <span style="font-size: 0.72rem; color: var(--text-muted);">Ubah Geser Langsung</span>
+        </div>
+        <div class="sliders-container" id="dynamicSliders">
+          <!-- Diisi otomatis oleh JavaScript sesuai token rig saat ini -->
+        </div>
+      </div>
+
+      <div class="footer-notes">
+        💡 <strong>Tips:</strong> Klik <strong>Bake (Instan)</strong> untuk menggambar seluruh siklus rotasi secara instan tanpa menunggu animasi. Anda juga bisa menggeser slider parameter di atas untuk melihat pola bermutasi secara real-time!
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // CYCLOID V5 WEB ENGINE - JAVASCRIPT PORT OF CYCLOIDV5.PDE
+    // =========================================================================
+
+    const TWO_PI = Math.PI * 2;
+    const PI = Math.PI;
+    const WS = 800;
+    const HS = 800;
+    const toothRadius = 0.0956414 * 72;
+
+    function radians(deg) { return deg * Math.PI / 180; }
+    function degrees(rad) { return rad * 180 / Math.PI; }
+    function inaz(c) { return ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')); }
+
+    function GCD(a, b) {
+      a = Math.abs(a);
+      b = Math.abs(b);
+      while (b) {
+        let t = b;
+        b = a % b;
+        a = t;
+      }
+      return a;
+    }
+
+    class PVector {
+      constructor(x = 0, y = 0) {
+        this.x = x;
+        this.y = y;
+      }
+    }
+
+    class LineRail {
+      constructor(x1, y1, x2 = x1, y2 = y1) {
+        this.x1 = x1; this.y1 = y1;
+        this.x2 = x2; this.y2 = y2;
+      }
+      getPosition(r) {
+        return new PVector(this.x1 + (this.x2 - this.x1) * r, this.y1 + (this.y2 - this.y1) * r);
+      }
+      draw(ctx) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(160, 160, 160, 0.6)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(this.x1, this.y1);
+        ctx.lineTo(this.x2, this.y2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    class Gear {
+      constructor(teeth) {
+        this.ID = "";
+        this.teeth = teeth;
+        this.x = 0;
+        this.y = 0;
+        this.rotation = 0;
+        this.phase = 0;
+        this.mountRatio = 0;
+        this.isFixed = false;
+        this.contributesToCycle = true;
+        this.meshGears = [];
+        this.stackGears = [];
+        this.isMoving = false;
+        this.itsChannel = null;
+        this.stackParent = null;
+        this.radius = (this.teeth * toothRadius / Math.PI);
+      }
+
+      mount(c, r = 1) {
+        this.itsChannel = c;
+        this.mountRatio = r;
+        const pos = c.getPosition(r);
+        this.x = pos.x;
+        this.y = pos.y;
+      }
+
+      meshTo(parent, moved = false) {
+        parent.meshGears.push(this);
+        let meshAngle = Math.atan2(this.y - parent.y, this.x - parent.x);
+        if (meshAngle < 0) meshAngle += TWO_PI;
+
+        if (moved) {
+          this.x = parent.x + (this.radius + parent.radius) * Math.cos(meshAngle);
+          this.y = parent.y + (this.radius + parent.radius) * Math.sin(meshAngle);
+        }
+
+        let parentMeshTooth = (meshAngle - parent.phase) * parent.teeth / TWO_PI;
+        parentMeshTooth -= Math.floor(parentMeshTooth);
+        this.phase = (meshAngle + Math.PI) + (parentMeshTooth + 0.5) * TWO_PI / this.teeth;
+      }
+
+      stackTo(parent) {
+        parent.stackGears.push(this);
+        this.x = parent.x;
+        this.y = parent.y;
+        this.phase = parent.phase;
+        this.stackParent = parent;
+      }
+
+      getPosition(r) {
+        return new PVector(
+          this.x + r * Math.cos(this.rotation + this.phase),
+          this.y + r * Math.sin(this.rotation + this.phase)
+        );
+      }
+
+      recalcPosition() {
+        if (this.itsChannel) {
+          const pt = this.itsChannel.getPosition(this.mountRatio);
+          this.x = pt.x;
+          this.y = pt.y;
+        }
+      }
+
+      crank(pos) {
+        if (!this.isFixed) {
+          this.rotation = pos;
+          const rTeeth = this.rotation * this.teeth;
+          for (const mGear of this.meshGears) {
+            mGear.crank(-(rTeeth) / mGear.teeth);
+          }
+          for (const sGear of this.stackGears) {
+            sGear.crank(this.rotation);
+          }
+          if (this.isMoving) this.recalcPosition();
+        } else {
+          for (const mGear of this.meshGears) {
+            mGear.crank(pos + (pos * this.teeth) / mGear.teeth);
+          }
+        }
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation + this.phase);
+
+        const r1 = this.radius - 0.07 * 72;
+        const r2 = this.radius + 0.07 * 72;
+        const tAngle = TWO_PI / this.teeth;
+        const tipAngle = tAngle * 0.1;
+
+        ctx.fillStyle = "rgba(70, 130, 200, 0.18)";
+        ctx.strokeStyle = "rgba(70, 130, 200, 0.75)";
+        ctx.lineWidth = 1;
+
+        ctx.beginPath();
+        for (let i = 0; i < this.teeth; i++) {
+          const a1 = i * tAngle;
+          const a2 = (i + 0.5) * tAngle;
+          const p1x = r2 * Math.cos(a1), p1y = r2 * Math.sin(a1);
+          const p2x = r2 * Math.cos(a1 + tipAngle), p2y = r2 * Math.sin(a1 + tipAngle);
+          const p3x = r1 * Math.cos(a2 - tipAngle), p3y = r1 * Math.sin(a2 - tipAngle);
+          const p4x = r1 * Math.cos(a2 + tipAngle), p4y = r1 * Math.sin(a2 + tipAngle);
+          const p5x = r2 * Math.cos(a1 + tAngle - tipAngle), p5y = r2 * Math.sin(a1 + tAngle - tipAngle);
+          const p6x = r2 * Math.cos(a1 + tAngle), p6y = r2 * Math.sin(a1 + tAngle);
+
+          if (i === 0) ctx.moveTo(p1x, p1y);
+          else ctx.lineTo(p1x, p1y);
+          ctx.lineTo(p2x, p2y);
+          ctx.lineTo(p3x, p3y);
+          ctx.lineTo(p4x, p4y);
+          ctx.lineTo(p5x, p5y);
+          ctx.lineTo(p6x, p6y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Hub tengah
+        ctx.beginPath();
+        ctx.arc(0, 0, Math.min(16, this.radius * 0.25), 0, TWO_PI);
+        ctx.fillStyle = "rgba(100, 160, 240, 0.4)";
+        ctx.fill();
+        ctx.stroke();
+
+        // Gear ID text
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 11px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.ID, 0, 0);
+
+        ctx.restore();
+      }
+    }
+
+    class MountPoint {
+      constructor(pOrX, rOrY = 0) {
+        this.ID = "";
+        this.isFixed = false;
+        this.itsChannel = null;
+        this.itsMountLength = 0;
+        if (typeof pOrX === "number") {
+          this.x = pOrX;
+          this.y = rOrY;
+          this.isFixed = true;
+        } else {
+          this.itsChannel = pOrX;
+          this.itsMountLength = rOrY;
+        }
+      }
+
+      getPosition(r = 0) {
+        if (this.itsChannel != null) {
+          return this.itsChannel.getPosition(this.itsMountLength);
+        } else {
+          return new PVector(this.x, this.y);
+        }
+      }
+
+      draw(ctx) {
+        const pos = this.getPosition();
+        if (this.itsChannel && typeof this.itsChannel.draw === "function" && this.itsChannel instanceof ConnectingRod) {
+          this.itsChannel.draw(ctx);
+        }
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 4, 0, TWO_PI);
+        ctx.fillStyle = "#ef4444";
+        ctx.fill();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    class ConnectingRod {
+      constructor(itsSlide, itsAnchor) {
+        this.ID = "";
+        this.itsSlide = itsSlide;
+        this.itsAnchor = itsAnchor;
+        this.isInverted = false;
+        this.armAngle = 0;
+      }
+
+      getPosition(r) {
+        const ap = this.itsAnchor.getPosition();
+        const sp = this.itsSlide.getPosition();
+        this.armAngle = Math.atan2(sp.y - ap.y, sp.x - ap.x);
+        return new PVector(ap.x + Math.cos(this.armAngle) * r, ap.y + Math.sin(this.armAngle) * r);
+      }
+
+      draw(ctx) {
+        const ap = this.itsAnchor.getPosition();
+        const sp = this.itsSlide.getPosition();
+        this.itsSlide.draw(ctx);
+        this.itsAnchor.draw(ctx);
+        this.armAngle = Math.atan2(sp.y - ap.y, sp.x - ap.x);
+        const L = 18 * 72;
+
+        ctx.save();
+        ctx.strokeStyle = "rgba(14, 165, 233, 0.85)";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(ap.x, ap.y);
+        ctx.lineTo(ap.x + Math.cos(this.armAngle) * L, ap.y + Math.sin(this.armAngle) * L);
+        ctx.stroke();
+
+        // Guide line
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(ap.x, ap.y);
+        ctx.lineTo(sp.x, sp.y);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+    }
+
+    class PenRig {
+      constructor(len, angle, mp) {
+        this.len = len;
+        this.angle = angle;
+        this.itsMP = mp;
+        this.itsRod = mp.itsChannel;
+      }
+
+      getPosition() {
+        const ap = this.itsMP.getPosition();
+        const d = this.len;
+        const rangle = radians(this.angle);
+        return new PVector(
+          ap.x + Math.cos(this.itsRod.armAngle + rangle) * d,
+          ap.y + Math.sin(this.itsRod.armAngle + rangle) * d
+        );
+      }
+
+      draw(ctx) {
+        const ap = this.itsMP.getPosition();
+        const ep = this.getPosition();
+        const a = Math.atan2(ap.y - ep.y, ap.x - ep.x);
+        const d = 6 * 72;
+        const extX = ep.x + Math.cos(a) * d;
+        const extY = ep.y + Math.sin(a) * d;
+
+        ctx.save();
+        ctx.strokeStyle = "rgba(244, 63, 94, 0.85)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(extX, extY);
+        ctx.lineTo(ep.x, ep.y);
+        ctx.stroke();
+
+        // Pen nib
+        ctx.beginPath();
+        ctx.arc(ep.x, ep.y, 5, 0, TWO_PI);
+        ctx.fillStyle = "#ec4899";
+        ctx.fill();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    class Token {
+      constructor(aslinya = "", tipe = "") {
+        this.aslinya = aslinya;
+        this.tipe = tipe;
+        this.param = [];
+      }
+      addParam(p) { this.param.push(p); }
+    }
+
+    // =========================================================================
+    // COLOR PALETTES & COLOR INTERPOLATION
+    // =========================================================================
+    const PALETTES = {
+      1: [[0, 0, 0], [216, 11, 83], [2, 155, 209]],
+      2: [[0, 0, 0], [7, 126, 222]],
+      3: [[240, 111, 210], [82, 232, 140], [232, 232, 232]],
+      4: [[245, 158, 11], [236, 72, 153], [139, 92, 246]]
+    };
+
+    let activePalette = 1;
+
+    function lerpColor(c1, c2, t) {
+      return [
+        Math.round(c1[0] + (c2[0] - c1[0]) * t),
+        Math.round(c1[1] + (c2[1] - c1[1]) * t),
+        Math.round(c1[2] + (c2[2] - c1[2]) * t)
+      ];
+    }
+
+    function colorScheme(frame, maxframes, actualCycles, palIdx = activePalette) {
+      const colors = PALETTES[palIdx] || PALETTES[1];
+      const jum = colors.length;
+      const seputaran = Math.max(1, maxframes / Math.max(1, actualCycles));
+      const z = 0.5 * (1 + Math.cos(TWO_PI * frame / seputaran));
+      const r0 = z * jum;
+      const rx = r0 % 1.0;
+      const c1 = colors[Math.floor(r0) % jum];
+      const c2 = colors[(1 + Math.floor(r0)) % jum];
+      const [r, g, b] = lerpColor(c1, c2, rx);
+      return `rgba(${r}, ${g}, ${b}, 0.55)`;
+    }
+
+    // =========================================================================
+    // SIMULATOR ENGINE STATE
+    // =========================================================================
+    let rails = [];
+    let activeGears = [];
+    let activeMountPoints = [];
+    let activeConnectingRods = [];
+    let pena = null;
+    let turnTable = null;
+    let tokens = [];
+
+    let speedFactor = 5;
+    let crankSpeed = (TWO_PI / 720) * speedFactor;
+    let myFrameCount = 0;
+    let totalRotations = 0;
+    let requiredFrames = 0;
+    let actualCycles = 1;
+    let actualRequiredFrames = 0;
+    let currentRigString = "";
+
+    let isPlaying = false;
+    let animFrameId = null;
+    let xold = 0, yold = 0;
+    let showRig = true;
+    let strokeWidth = 1.0;
+
+    const paperCanvas = document.getElementById("paperCanvas");
+    const paperCtx = paperCanvas.getContext("2d");
+    const overlayCanvas = document.getElementById("overlayCanvas");
+    const overlayCtx = overlayCanvas.getContext("2d");
+
+    function clearPaper() {
+      paperCtx.fillStyle = "#dfded8";
+      paperCtx.fillRect(0, 0, WS, HS);
+      xold = 0;
+      yold = 0;
+      myFrameCount = 0;
+      updateUIStatus();
+    }
+
+    function rigReset() {
+      rails = [];
+      activeGears = [];
+      activeMountPoints = [];
+      activeConnectingRods = [];
+      pena = null;
+      turnTable = null;
+      tokens = [];
+    }
+
+    function addGear(teeth) {
+      const g = new Gear(teeth);
+      activeGears.push(g);
+      return g;
+    }
+
+    function addMP(pOrX, rOrY = 0) {
+      const mp = new MountPoint(pOrX, rOrY);
+      activeMountPoints.push(mp);
+      return mp;
+    }
+
+    function addCR(slide, anchor) {
+      const cr = new ConnectingRod(slide, anchor);
+      activeConnectingRods.push(cr);
+      return cr;
+    }
+
+    function addPen(len, angle, mp) {
+      return new PenRig(len, angle, mp);
+    }
+
+    function computeCyclicRotations() {
+      let a = 1;
+      let idx = 0;
+      let adaYgMoving = false;
+
+      for (const g of activeGears) {
+        if (g.contributesToCycle && g !== turnTable) {
+          let ratioNom = turnTable.teeth;
+          let ratioDenom = g.teeth;
+
+          if (g.isMoving) {
+            ratioNom = turnTable.teeth * (activeGears[idx - 1].teeth + g.teeth);
+            ratioDenom = activeGears[idx - 2].teeth * g.teeth;
+            const gcd = GCD(ratioNom, ratioDenom);
+            ratioNom = Math.floor(ratioNom / gcd);
+            ratioDenom = Math.floor(ratioDenom / gcd);
+            adaYgMoving = true;
+          }
+
+          const gcd = GCD(ratioNom, ratioDenom);
+          const b = Math.floor(Math.min(ratioNom, ratioDenom) / gcd);
+          const gcdAB = GCD(a, b);
+          a = Math.max(a, Math.floor(Math.max(a, b) * Math.min(a, b) / (gcdAB || 1)));
+        }
+        idx++;
+      }
+
+      if (adaYgMoving) {
+        debugOrbitCycle();
+      } else {
+        actualCycles = a;
+      }
+      return a;
+    }
+
+    function debugOrbitCycle() {
+      let t = 0;
+      let skor = 0;
+      let MAXSKOR = 0;
+      for (const g of activeGears) if (g.contributesToCycle) MAXSKOR++;
+
+      while (skor < MAXSKOR && t < 20000) {
+        t++;
+        turnTable.crank(t * crankSpeed);
+        skor = 0;
+        for (const g of activeGears) {
+          if (g.contributesToCycle && (Math.round(100 * Math.abs(g.rotation % TWO_PI)) % 628) === 0) {
+            skor++;
+          }
+        }
+      }
+      actualRequiredFrames = t;
+      actualCycles = Math.max(1, Math.round(crankSpeed * t / TWO_PI));
+    }
+
+    function rigSetup(s) {
+      currentRigString = s.trim();
+      rigReset();
+
+      const tokenList = s.trim().split(/\s+/);
+      for (let t of tokenList) {
+        if (!t) continue;
+        const k = t.charAt(0);
+
+        if (k === 'G') {
+          if (t.length < 3) return false;
+          const v1 = t.charAt(1);
+          if (!inaz(v1)) return false;
+          const gigi = parseInt(t.substring(2));
+          if (isNaN(gigi) || gigi < 8) return false;
+
+          let baru;
+          if (activeGears.length === 0) {
+            turnTable = addGear(gigi);
+            turnTable.ID = "" + v1;
+            turnTable.mount(new MountPoint(WS / 2, HS / 2));
+          } else {
+            baru = addGear(gigi);
+            baru.ID = "" + v1;
+          }
+
+          const tok = new Token(t, 'G');
+          tok.addParam("" + v1);
+          tok.addParam("" + gigi);
+          tokens.push(tok);
+        }
+        else if (k === 'M') {
+          if (t.length < 4) return false;
+          const g1 = t.charAt(1);
+          const g2 = t.charAt(2);
+          if (!inaz(g1) || !inaz(g2)) return false;
+          const sudut = parseInt(t.substring(3));
+
+          let parent = null;
+          for (const g of activeGears) if (g.ID === g2) parent = g;
+
+          if (parent) {
+            const parentPos = parent.getPosition(0);
+            for (const g of activeGears) {
+              if (g.ID === g1) {
+                g.mount(new MountPoint(parentPos.x + 10000 * Math.cos(radians(sudut)), parentPos.y + 10000 * Math.sin(radians(sudut))));
+                g.meshTo(parent, true);
+              }
+            }
+          }
+
+          const tok = new Token(t, 'M');
+          tok.addParam("" + g1);
+          tok.addParam("" + g2);
+          tok.addParam("" + sudut);
+          tokens.push(tok);
+        }
+        else if (k === 'C') {
+          let inv = false;
+          if (t.endsWith('i')) {
+            inv = true;
+            t = t.substring(0, t.length - 1);
+          }
+          if (t.length < 6) return false;
+
+          const ID = t.substring(1, 2);
+          const pos1 = t.substring(2, 3);
+          let pos2 = "";
+          let ratio1 = "";
+          let ratio1ok = 0, ratio2ok = 0;
+          let cnt = 3;
+          let c = '';
+
+          while (cnt < t.length && !inaz(t.charAt(cnt))) {
+            ratio1 += t.charAt(cnt);
+            cnt++;
+          }
+          ratio1ok = parseInt(ratio1) || 0;
+          if (cnt < t.length) {
+            pos2 = "" + t.charAt(cnt);
+            ratio2ok = parseInt(t.substring(cnt + 1)) || 0;
+          }
+
+          let p1 = null, p2 = null;
+          for (const g of activeGears) if (g.ID === pos1) p1 = addMP(g, g.radius * 0.01 * ratio1ok);
+          if (!p1) for (const px of activeMountPoints) if (px.ID === pos1) p1 = px;
+          if (!p1) for (const cr of activeConnectingRods) if (cr.ID === pos1) p1 = addMP(cr, ratio1ok);
+
+          for (const g of activeGears) if (g.ID === pos2) p2 = addMP(g, g.radius * 0.01 * ratio2ok);
+          if (!p2) for (const px of activeMountPoints) if (px.ID === pos2) p2 = px;
+          if (!p2) for (const cr of activeConnectingRods) if (cr.ID === pos2) p2 = addMP(cr, ratio2ok);
+
+          if (!p1 || !p2) return false;
+
+          let baru;
+          if (!inv) baru = addCR(p1, p2);
+          else baru = addCR(p2, p1);
+          baru.ID = ID;
+
+          const tok = new Token(t, 'C');
+          tok.addParam(ID);
+          tok.addParam("" + pos1);
+          tok.addParam("" + ratio1ok);
+          tok.addParam("" + pos2);
+          tok.addParam("" + ratio2ok);
+          if (inv) tok.addParam("i");
+          tokens.push(tok);
+        }
+        else if (k === 'L') {
+          if (t.length < 6) return false;
+          const ID = t.substring(1, 2);
+          const pos1 = t.substring(2, 3);
+          let cnt = 3;
+          let ratio1 = "";
+          let ratio1ok = 0, ratio2ok = 0;
+          let pos2 = "";
+
+          while (cnt < t.length && !inaz(t.charAt(cnt))) {
+            ratio1 += t.charAt(cnt);
+            cnt++;
+          }
+          ratio1ok = parseInt(ratio1) || 0;
+          if (cnt < t.length) {
+            pos2 = "" + t.charAt(cnt);
+            ratio2ok = parseInt(t.substring(cnt + 1)) || 0;
+          }
+
+          if (pos1 !== 'x' || pos2 !== 'y') return false;
+
+          const baru = addMP(ratio1ok, ratio2ok);
+          baru.ID = ID;
+
+          const tok = new Token(t, 'L');
+          tok.addParam(ID);
+          tok.addParam("" + ratio1ok);
+          tok.addParam("" + ratio2ok);
+          tokens.push(tok);
+        }
+        else if (k === 'P') {
+          const ID = t.substring(1, 2);
+          let sudut = 90;
+          if (t.includes('s')) {
+            const spl = t.split('s');
+            sudut = parseInt(spl[spl.length - 1]) || 90;
+          }
+
+          let cnt = 3;
+          let ratio1 = "";
+          while (cnt < t.length && !inaz(t.charAt(cnt))) {
+            ratio1 += t.charAt(cnt);
+            cnt++;
+          }
+          const ratio1ok = parseInt(ratio1) || 0;
+          const rest = t.substring(cnt + 1).split('s')[0];
+          const ratio2ok = parseInt(rest) || 0;
+
+          for (const rod of activeConnectingRods) {
+            if (rod.ID === ID) {
+              pena = addPen(ratio2ok, sudut, addMP(rod, ratio1ok));
+              break;
+            }
+          }
+
+          const tok = new Token(t, 'P');
+          tok.addParam(ID);
+          tok.addParam("" + ratio1ok);
+          tok.addParam("" + ratio2ok);
+          tok.addParam("" + sudut);
+          tokens.push(tok);
+        }
+        else if (k === 'Z') {
+          const sf = parseInt(t.substring(1)) || 5;
+          speedFactor = sf;
+          const tok = new Token(t, 'Z');
+          tok.addParam("" + sf);
+          tokens.push(tok);
+        }
+        else if (k === 'D') {
+          const ID = t.charAt(1);
+          for (const g of activeGears) if (g.ID === ID) g.contributesToCycle = false;
+          const tok = new Token(t, 'D');
+          tok.addParam(ID);
+          tokens.push(tok);
+        }
+        else if (k === 'F') {
+          const ID = t.charAt(1);
+          for (const g of activeGears) if (g.ID === ID) g.isFixed = true;
+          const tok = new Token(t, 'F');
+          tok.addParam(ID);
+          tokens.push(tok);
+        }
+        else if (k === 'S') {
+          if (t.length !== 3) return false;
+          const g1 = t.charAt(1);
+          const g2 = t.charAt(2);
+          let parent = null;
+          for (const g of activeGears) if (g.ID === g2) parent = g;
+          if (parent) {
+            for (const g of activeGears) {
+              if (g.ID === g1) {
+                g.stackTo(parent);
+                g.isFixed = true;
+              }
+            }
+          }
+          const tok = new Token(t, 'S');
+          tok.addParam(g1);
+          tok.addParam(g2);
+          tokens.push(tok);
+        }
+        else if (k === 'O') {
+          if (t.length !== 3) return false;
+          const g1 = t.charAt(1);
+          const g2 = t.charAt(2);
+          let parent = null;
+          for (const g of activeGears) if (g.ID === g2) parent = g;
+          if (parent) {
+            for (const g of activeGears) {
+              if (g.ID === g1) {
+                const R = g.radius + parent.radius;
+                g.mount(new MountPoint(parent.stackParent, R));
+                g.meshTo(parent, true);
+                g.isMoving = true;
+              }
+            }
+          }
+          const tok = new Token(t, 'O');
+          tok.addParam(g1);
+          tok.addParam(g2);
+          tokens.push(tok);
+        }
+      }
+
+      myFrameCount = 0;
+      crankSpeed = (TWO_PI / 720) * speedFactor;
+      totalRotations = computeCyclicRotations();
+      requiredFrames = Math.round((TWO_PI * totalRotations) / crankSpeed);
+      if (totalRotations !== actualCycles && actualRequiredFrames > 0) {
+        totalRotations = actualCycles;
+        requiredFrames = actualRequiredFrames;
+      }
+
+      updateUIStatus();
+      buildDynamicSliders();
+      return true;
+    }
+
+    function susunStringToken() {
+      let hasil = "";
+      for (const t of tokens) {
+        if (t.tipe === 'G') hasil += `G${t.param[0]}${t.param[1]}`;
+        else if (t.tipe === 'M') hasil += `M${t.param[0]}${t.param[1]}${t.param[2]}`;
+        else if (t.tipe === 'C') {
+          hasil += `C${t.param[0]}${t.param[1]}${t.param[2]}${t.param[3]}${t.param[4]}`;
+          if (t.param.length === 6) hasil += "i";
+        }
+        else if (t.tipe === 'L') hasil += `L${t.param[0]}x${t.param[1]}y${t.param[2]}`;
+        else if (t.tipe === 'P') hasil += `P${t.param[0]}x${t.param[1]}y${t.param[2]}s${t.param[3]}`;
+        else if (t.tipe === 'Z') hasil += `Z${t.param[0]}`;
+        else if (t.tipe === 'D') hasil += `D${t.param[0]}`;
+        else if (t.tipe === 'F') hasil += `F${t.param[0]}`;
+        else if (t.tipe === 'S') hasil += `S${t.param[0]}${t.param[1]}`;
+        else if (t.tipe === 'O') hasil += `O${t.param[0]}${t.param[1]}`;
+        hasil += " ";
+      }
+      return hasil.trim();
+    }
+
+    // =========================================================================
+    // RENDER CYCLES: ANIMATED & BAKE
+    // =========================================================================
+
+    function stepSimulation() {
+      if (!turnTable) return;
+      myFrameCount++;
+      turnTable.crank(myFrameCount * crankSpeed);
+
+      if (pena) {
+        const nib = pena.getPosition();
+        const dx = nib.x - WS / 2;
+        const dy = nib.y - HS / 2;
+        const a = Math.atan2(dy, dx);
+        const l = Math.sqrt(dx * dx + dy * dy);
+        const px = WS / 2 + Math.cos(a - turnTable.rotation) * l;
+        const py = HS / 2 + Math.sin(a - turnTable.rotation) * l;
+
+        if (myFrameCount < 2) {
+          xold = px;
+          yold = py;
+        } else {
+          paperCtx.strokeStyle = colorScheme(myFrameCount, requiredFrames, actualCycles);
+          paperCtx.lineWidth = strokeWidth;
+          paperCtx.lineCap = "round";
+          paperCtx.beginPath();
+          paperCtx.moveTo(xold, yold);
+          paperCtx.lineTo(px, py);
+          paperCtx.stroke();
+          xold = px;
+          yold = py;
+        }
+      }
+
+      if (showRig) {
+        drawMechanismOverlay();
+      } else {
+        overlayCtx.clearRect(0, 0, WS, HS);
+      }
+
+      updateUIStatus();
+
+      if (myFrameCount >= requiredFrames) {
+        pauseAnimation();
+      }
+    }
+
+    function drawMechanismOverlay() {
+      overlayCtx.clearRect(0, 0, WS, HS);
+      if (!turnTable) return;
+
+      overlayCtx.save();
+      overlayCtx.translate(WS / 2, HS / 2);
+      overlayCtx.rotate(-turnTable.rotation);
+      overlayCtx.translate(-WS / 2, -HS / 2);
+
+      for (const ch of rails) ch.draw(overlayCtx);
+      for (const g of activeGears) if (g !== turnTable) g.draw(overlayCtx);
+      for (const r of activeConnectingRods) r.draw(overlayCtx);
+      if (turnTable) turnTable.draw(overlayCtx);
+      if (pena) pena.draw(overlayCtx);
+
+      overlayCtx.restore();
+    }
+
+    function bakeInstan() {
+      if (!turnTable || !pena) return;
+      pauseAnimation();
+      clearPaper();
+
+      const totalF = Math.min(requiredFrames || 10000, 100000);
+      let pxOld = 0, pyOld = 0;
+
+      for (let f = 0; f <= totalF; f++) {
+        turnTable.crank(f * crankSpeed);
+        const nib = pena.getPosition();
+        const dx = nib.x - WS / 2;
+        const dy = nib.y - HS / 2;
+        const a = Math.atan2(dy, dx);
+        const l = Math.sqrt(dx * dx + dy * dy);
+        const px = WS / 2 + Math.cos(a - turnTable.rotation) * l;
+        const py = HS / 2 + Math.sin(a - turnTable.rotation) * l;
+
+        if (f === 0) {
+          pxOld = px;
+          pyOld = py;
+        } else {
+          paperCtx.strokeStyle = colorScheme(f, totalF, actualCycles);
+          paperCtx.lineWidth = strokeWidth;
+          paperCtx.beginPath();
+          paperCtx.moveTo(pxOld, pyOld);
+          paperCtx.lineTo(px, py);
+          paperCtx.stroke();
+          pxOld = px;
+          pyOld = py;
+        }
+      }
+
+      myFrameCount = totalF;
+      updateUIStatus();
+
+      if (showRig) {
+        drawMechanismOverlay();
+      } else {
+        overlayCtx.clearRect(0, 0, WS, HS);
+      }
+    }
+
+    function animLoop() {
+      if (!isPlaying) return;
+      stepSimulation();
+      animFrameId = requestAnimationFrame(animLoop);
+    }
+
+    function startAnimation() {
+      if (isPlaying) return;
+      isPlaying = true;
+      document.getElementById("playIcon").innerHTML = "&#10074;&#10074;";
+      document.getElementById("playText").innerText = "Pause";
+      animLoop();
+    }
+
+    function pauseAnimation() {
+      isPlaying = false;
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      document.getElementById("playIcon").innerHTML = "&#9654;";
+      document.getElementById("playText").innerText = "Play";
+    }
+
+    // =========================================================================
+    // UI UPDATES & DYNAMIC SLIDERS
+    // =========================================================================
+
+    function updateUIStatus() {
+      document.getElementById("lblFrame").innerText = myFrameCount;
+      document.getElementById("lblMaxFrame").innerText = requiredFrames;
+      document.getElementById("lblCycles").innerText = actualCycles;
+    }
+
+    function buildDynamicSliders() {
+      const container = document.getElementById("dynamicSliders");
+      container.innerHTML = "";
+
+      tokens.forEach((tok, tokIdx) => {
+        if (tok.tipe === 'M') {
+          // Mesh angle
+          const g1 = tok.param[0], g2 = tok.param[1], angle = parseInt(tok.param[2]);
+          container.appendChild(createSliderRow(`Meshing ${g1} ➔ ${g2} (Sudut)`, angle, 0, 360, (v) => {
+            tok.param[2] = "" + v;
+            syncFromSliderChange();
+          }));
+        }
+        else if (tok.tipe === 'C') {
+          // Rod parameters
+          const id = tok.param[0], p1 = tok.param[1], r1 = parseInt(tok.param[2]), p2 = tok.param[3], r2 = parseInt(tok.param[4]);
+          container.appendChild(createSliderRow(`Rod ${id} ➔ Pos ${p1}`, r1, 0, 720, (v) => {
+            tok.param[2] = "" + v;
+            syncFromSliderChange();
+          }));
+          container.appendChild(createSliderRow(`Rod ${id} ➔ Pos ${p2}`, r2, 0, 720, (v) => {
+            tok.param[4] = "" + v;
+            syncFromSliderChange();
+          }));
+        }
+        else if (tok.tipe === 'L') {
+          // Anchor
+          const id = tok.param[0], x = parseInt(tok.param[1]), y = parseInt(tok.param[2]);
+          container.appendChild(createSliderRow(`Anchor ${id} Pos X`, x, -1000, 1000, (v) => {
+            tok.param[1] = "" + v;
+            syncFromSliderChange();
+          }));
+          container.appendChild(createSliderRow(`Anchor ${id} Pos Y`, y, -1000, 1000, (v) => {
+            tok.param[2] = "" + v;
+            syncFromSliderChange();
+          }));
+        }
+        else if (tok.tipe === 'P') {
+          // Pen
+          const id = tok.param[0], px = parseInt(tok.param[1]), py = parseInt(tok.param[2]), s = parseInt(tok.param[3]);
+          container.appendChild(createSliderRow(`Pena di Rod ${id} (Offset X)`, px, -700, 700, (v) => {
+            tok.param[1] = "" + v;
+            syncFromSliderChange();
+          }));
+          container.appendChild(createSliderRow(`Pena di Rod ${id} (Jarak Y)`, py, -700, 700, (v) => {
+            tok.param[2] = "" + v;
+            syncFromSliderChange();
+          }));
+          container.appendChild(createSliderRow(`Pena di Rod ${id} (Sudut S)`, s, -180, 180, (v) => {
+            tok.param[3] = "" + v;
+            syncFromSliderChange();
+          }));
+        }
+      });
+    }
+
+    function createSliderRow(labelText, val, min, max, onChange) {
+      const row = document.createElement("div");
+      row.className = "slider-row";
+
+      const top = document.createElement("div");
+      top.className = "slider-label-row";
+      const lbl = document.createElement("span");
+      lbl.innerText = labelText;
+      const numVal = document.createElement("span");
+      numVal.className = "val";
+      numVal.innerText = val;
+      top.appendChild(lbl);
+      top.appendChild(numVal);
+
+      const rng = document.createElement("input");
+      rng.type = "range";
+      rng.min = min;
+      rng.max = max;
+      rng.value = val;
+      rng.addEventListener("input", (e) => {
+        numVal.innerText = e.target.value;
+        onChange(parseInt(e.target.value));
+      });
+
+      row.appendChild(top);
+      row.appendChild(rng);
+      return row;
+    }
+
+    let debounceTimer = null;
+    function syncFromSliderChange() {
+      const updatedCode = susunStringToken();
+      document.getElementById("txtRig").value = updatedCode;
+
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        const wasPlaying = isPlaying;
+        pauseAnimation();
+        clearPaper();
+        rigSetup(updatedCode);
+        if (wasPlaying) startAnimation();
+        else bakeInstan();
+      }, 60);
+    }
+
+    // =========================================================================
+    // EVENT LISTENERS & INITIALIZATION
+    // =========================================================================
+
+    document.getElementById("btnPlayPause").addEventListener("click", () => {
+      if (isPlaying) pauseAnimation();
+      else startAnimation();
+    });
+
+    document.getElementById("btnBake").addEventListener("click", bakeInstan);
+
+    document.getElementById("btnReset").addEventListener("click", () => {
+      pauseAnimation();
+      clearPaper();
+      rigSetup(document.getElementById("txtRig").value);
+    });
+
+    document.getElementById("btnApplyRig").addEventListener("click", () => {
+      const code = document.getElementById("txtRig").value;
+      pauseAnimation();
+      clearPaper();
+      rigSetup(code);
+      bakeInstan();
+    });
+
+    document.getElementById("selPreset").addEventListener("change", (e) => {
+      const code = e.target.value;
+      document.getElementById("txtRig").value = code;
+      pauseAnimation();
+      clearPaper();
+      rigSetup(code);
+      bakeInstan();
+    });
+
+    document.getElementById("btnCopyRig").addEventListener("click", () => {
+      const code = document.getElementById("txtRig").value;
+      navigator.clipboard.writeText(code).then(() => {
+        const btn = document.getElementById("btnCopyRig");
+        btn.innerText = "Tersalin!";
+        setTimeout(() => btn.innerText = "Salin", 1500);
+      });
+    });
+
+    document.getElementById("btnExport").addEventListener("click", () => {
+      const link = document.createElement("a");
+      link.download = `cycloid-v5-${Date.now()}.png`;
+      link.href = paperCanvas.toDataURL("image/png");
+      link.click();
+    });
+
+    document.getElementById("chkShowRig").addEventListener("change", (e) => {
+      showRig = e.target.checked;
+      if (!showRig) overlayCtx.clearRect(0, 0, WS, HS);
+      else drawMechanismOverlay();
+    });
+
+    document.getElementById("rngSpeed").addEventListener("input", (e) => {
+      speedFactor = parseInt(e.target.value);
+      crankSpeed = (TWO_PI / 720) * speedFactor;
+      document.getElementById("lblSpeed").innerText = `${speedFactor}x`;
+    });
+
+    document.getElementById("rngWeight").addEventListener("input", (e) => {
+      strokeWidth = parseFloat(e.target.value);
+      document.getElementById("lblWeight").innerText = strokeWidth.toFixed(1);
+    });
+
+    document.querySelectorAll(".color-pill").forEach(pill => {
+      pill.addEventListener("click", () => {
+        document.querySelectorAll(".color-pill").forEach(p => p.classList.remove("active"));
+        pill.classList.add("active");
+        activePalette = parseInt(pill.getAttribute("data-palette"));
+        bakeInstan();
+      });
+    });
+
+    // Keyboard shortcuts
+    window.addEventListener("keydown", (e) => {
+      if (e.target.tagName === "INPUT") return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (isPlaying) pauseAnimation(); else startAnimation();
+      } else if (e.key === "b" || e.key === "B") {
+        bakeInstan();
+      } else if (e.key === "r" || e.key === "R") {
+        pauseAnimation();
+        clearPaper();
+        rigSetup(document.getElementById("txtRig").value);
+      }
+    });
+
+    // INIT
+    window.addEventListener("DOMContentLoaded", () => {
+      clearPaper();
+      rigSetup(document.getElementById("txtRig").value);
+      bakeInstan();
+    });
+
+  </script>
+</body>
+</html>
