@@ -432,6 +432,9 @@
         <button class="btn" id="btnExport">
           💾 Simpan PNG
         </button>
+        <button class="btn" id="btnExportSvg">
+          ◇ Simpan SVG
+        </button>
 
         <label class="checkbox-row" style="margin-left: 8px;">
           <input type="checkbox" id="chkShowRig" checked />
@@ -439,7 +442,7 @@
         </label>
 
         <div class="stat-pill">
-          Frame: <strong id="lblFrame">0</strong> / <span id="lblMaxFrame">0</span>
+          Sampel adaptif: <strong id="lblFrame">0</strong> / <span id="lblMaxFrame">0</span>
         </div>
         <div class="stat-pill">
           Siklus: <strong id="lblCycles">0</strong>
@@ -543,7 +546,7 @@
       </div>
 
       <div class="footer-notes">
-        💡 <strong>Tips:</strong> Klik <strong>Bake (Instan)</strong> untuk menggambar seluruh siklus rotasi secara instan tanpa menunggu animasi. Anda juga bisa menggeser slider parameter di atas untuk melihat pola bermutasi secara real-time!
+        💡 <strong>Tips:</strong> Klik <strong>Bake (Instan)</strong> untuk menggambar seluruh siklus dengan sampling sudut adaptif. Gunakan <strong>Simpan SVG</strong> untuk hasil vektor yang tetap halus saat diperbesar.
       </div>
 
     </div>
@@ -900,17 +903,20 @@
       ];
     }
 
-    function colorScheme(frame, maxframes, actualCycles, palIdx = activePalette) {
+    function paletteColorAtAngle(angle, palIdx = activePalette) {
       const colors = PALETTES[palIdx] || PALETTES[1];
-      const jum = colors.length;
-      const seputaran = Math.max(1, maxframes / Math.max(1, actualCycles));
-      const z = 0.5 * (1 + Math.cos(TWO_PI * frame / seputaran));
-      const r0 = z * jum;
-      const rx = r0 % 1.0;
-      const c1 = colors[Math.floor(r0) % jum];
-      const c2 = colors[(1 + Math.floor(r0)) % jum];
-      const [r, g, b] = lerpColor(c1, c2, rx);
-      return `rgba(${r}, ${g}, ${b}, 0.55)`;
+      const count = colors.length;
+      const z = 0.5 * (1 + Math.cos(angle));
+      const colorPos = z * count;
+      const blend = colorPos % 1;
+      const c1 = colors[Math.floor(colorPos) % count];
+      const c2 = colors[(Math.floor(colorPos) + 1) % count];
+      return lerpColor(c1, c2, blend);
+    }
+
+    function colorSchemeAtAngle(angle, palIdx = activePalette, alpha = 0.55) {
+      const [r, g, b] = paletteColorAtAngle(angle, palIdx);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
 
     // =========================================================================
@@ -925,7 +931,7 @@
     let tokens = [];
 
     let speedFactor = 5;
-    let crankSpeed = (TWO_PI / 720) * speedFactor;
+    const cycleProbeStep = TWO_PI / 720;
     let myFrameCount = 0;
     let totalRotations = 0;
     let requiredFrames = 0;
@@ -935,9 +941,17 @@
 
     let isPlaying = false;
     let animFrameId = null;
-    let xold = 0, yold = 0;
     let showRig = true;
     let strokeWidth = 1.0;
+    let curveSamples = [];
+    let sampleCursor = 0;
+
+    const ADAPTIVE_SAMPLE = {
+      curveTolerance: 0.14,
+      maxChordLength: 12,
+      maxInternalAngle: radians(8),
+      maxSamples: 100000
+    };
 
     const paperCanvas = document.getElementById("paperCanvas");
     const paperCtx = paperCanvas.getContext("2d");
@@ -947,9 +961,8 @@
     function clearPaper() {
       paperCtx.fillStyle = "#dfded8";
       paperCtx.fillRect(0, 0, WS, HS);
-      xold = 0;
-      yold = 0;
       myFrameCount = 0;
+      sampleCursor = 0;
       updateUIStatus();
     }
 
@@ -961,6 +974,8 @@
       pena = null;
       turnTable = null;
       tokens = [];
+      curveSamples = [];
+      sampleCursor = 0;
     }
 
     function addGear(teeth) {
@@ -983,6 +998,99 @@
 
     function addPen(len, angle, mp) {
       return new PenRig(len, angle, mp);
+    }
+
+    function evaluatePenAt(angle) {
+      if (!turnTable || !pena) return null;
+      turnTable.crank(angle);
+
+      const nib = pena.getPosition();
+      const dx = nib.x - WS / 2;
+      const dy = nib.y - HS / 2;
+      const a = Math.atan2(dy, dx);
+      const l = Math.sqrt(dx * dx + dy * dy);
+
+      return {
+        angle,
+        x: WS / 2 + Math.cos(a - turnTable.rotation) * l,
+        y: HS / 2 + Math.sin(a - turnTable.rotation) * l
+      };
+    }
+
+    function pointLineDistance(p, a, b) {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const len2 = dx * dx + dy * dy;
+      if (len2 < 1e-12) return Math.hypot(p.x - a.x, p.y - a.y);
+      const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
+      return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+    }
+
+    function estimateMotionFactor() {
+      if (!turnTable) return 1;
+      turnTable.crank(0);
+      turnTable.crank(1);
+      let factor = 1;
+      for (const gear of activeGears) factor = Math.max(factor, Math.abs(gear.rotation));
+      turnTable.crank(0);
+      return factor;
+    }
+
+    function buildAdaptiveCurve() {
+      if (!turnTable || !pena || totalRotations <= 0) return [];
+
+      const endAngle = TWO_PI * totalRotations;
+      const motionFactor = estimateMotionFactor();
+      const maxDelta = Math.min(
+        radians(12),
+        ADAPTIVE_SAMPLE.maxInternalAngle / Math.max(1, motionFactor)
+      );
+      const minDelta = maxDelta / 512;
+      const result = [];
+
+      let angle = 0;
+      let delta = maxDelta;
+      let current = evaluatePenAt(0);
+      if (!current) return result;
+      result.push(current);
+
+      while (angle < endAngle - 1e-10 && result.length < ADAPTIVE_SAMPLE.maxSamples) {
+        const nextAngle = Math.min(endAngle, angle + delta);
+        const quarterAngle = angle + (nextAngle - angle) * 0.25;
+        const middleAngle = angle + (nextAngle - angle) * 0.5;
+        const threeQuarterAngle = angle + (nextAngle - angle) * 0.75;
+        const q1 = evaluatePenAt(quarterAngle);
+        const middle = evaluatePenAt(middleAngle);
+        const q3 = evaluatePenAt(threeQuarterAngle);
+        const next = evaluatePenAt(nextAngle);
+
+        const curveError = Math.max(
+          pointLineDistance(q1, current, next),
+          pointLineDistance(middle, current, next),
+          pointLineDistance(q3, current, next)
+        );
+        const chordLength = Math.hypot(next.x - current.x, next.y - current.y);
+        const tooCoarse = curveError > ADAPTIVE_SAMPLE.curveTolerance ||
+          chordLength > ADAPTIVE_SAMPLE.maxChordLength;
+
+        if (tooCoarse && delta > minDelta) {
+          delta = Math.max(minDelta, delta * 0.5);
+          continue;
+        }
+
+        result.push(next);
+        angle = nextAngle;
+        current = next;
+
+        const errorLoad = curveError / ADAPTIVE_SAMPLE.curveTolerance;
+        const chordLoad = chordLength / ADAPTIVE_SAMPLE.maxChordLength;
+        const load = Math.max(errorLoad, chordLoad);
+        if (load < 0.22) delta = Math.min(maxDelta, delta * 1.8);
+        else if (load < 0.5) delta = Math.min(maxDelta, delta * 1.35);
+      }
+
+      turnTable.crank(0);
+      return result;
     }
 
     function computeCyclicRotations() {
@@ -1028,7 +1136,7 @@
 
       while (skor < MAXSKOR && t < 20000) {
         t++;
-        turnTable.crank(t * crankSpeed);
+        turnTable.crank(t * cycleProbeStep);
         skor = 0;
         for (const g of activeGears) {
           if (g.contributesToCycle && (Math.round(100 * Math.abs(g.rotation % TWO_PI)) % 628) === 0) {
@@ -1037,7 +1145,7 @@
         }
       }
       actualRequiredFrames = t;
-      actualCycles = Math.max(1, Math.round(crankSpeed * t / TWO_PI));
+      actualCycles = Math.max(1, Math.round(cycleProbeStep * t / TWO_PI));
     }
 
     function rigSetup(s) {
@@ -1274,13 +1382,17 @@
       }
 
       myFrameCount = 0;
-      crankSpeed = (TWO_PI / 720) * speedFactor;
       totalRotations = computeCyclicRotations();
-      requiredFrames = Math.round((TWO_PI * totalRotations) / crankSpeed);
       if (totalRotations !== actualCycles && actualRequiredFrames > 0) {
         totalRotations = actualCycles;
-        requiredFrames = actualRequiredFrames;
       }
+      curveSamples = buildAdaptiveCurve();
+      sampleCursor = 0;
+      requiredFrames = Math.max(0, curveSamples.length - 1);
+
+      const speedSlider = document.getElementById("rngSpeed");
+      speedSlider.value = Math.max(parseInt(speedSlider.min), Math.min(parseInt(speedSlider.max), speedFactor));
+      document.getElementById("lblSpeed").innerText = `${speedFactor}x`;
 
       updateUIStatus();
       buildDynamicSliders();
@@ -1312,35 +1424,31 @@
     // RENDER CYCLES: ANIMATED & BAKE
     // =========================================================================
 
+    function drawCurveSegment(ctx, from, to) {
+      ctx.strokeStyle = colorSchemeAtAngle(to.angle);
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+    }
+
     function stepSimulation() {
-      if (!turnTable) return;
-      myFrameCount++;
-      turnTable.crank(myFrameCount * crankSpeed);
+      if (!turnTable || curveSamples.length < 2) return;
 
-      if (pena) {
-        const nib = pena.getPosition();
-        const dx = nib.x - WS / 2;
-        const dy = nib.y - HS / 2;
-        const a = Math.atan2(dy, dx);
-        const l = Math.sqrt(dx * dx + dy * dy);
-        const px = WS / 2 + Math.cos(a - turnTable.rotation) * l;
-        const py = HS / 2 + Math.sin(a - turnTable.rotation) * l;
-
-        if (myFrameCount < 2) {
-          xold = px;
-          yold = py;
-        } else {
-          paperCtx.strokeStyle = colorScheme(myFrameCount, requiredFrames, actualCycles);
-          paperCtx.lineWidth = strokeWidth;
-          paperCtx.lineCap = "round";
-          paperCtx.beginPath();
-          paperCtx.moveTo(xold, yold);
-          paperCtx.lineTo(px, py);
-          paperCtx.stroke();
-          xold = px;
-          yold = py;
-        }
+      const stepsThisFrame = Math.max(1, speedFactor);
+      for (let i = 0; i < stepsThisFrame && sampleCursor < curveSamples.length - 1; i++) {
+        const from = curveSamples[sampleCursor];
+        const to = curveSamples[sampleCursor + 1];
+        drawCurveSegment(paperCtx, from, to);
+        sampleCursor++;
       }
+
+      myFrameCount = sampleCursor;
+      const current = curveSamples[sampleCursor];
+      turnTable.crank(current.angle);
 
       if (showRig) {
         drawMechanismOverlay();
@@ -1350,7 +1458,7 @@
 
       updateUIStatus();
 
-      if (myFrameCount >= requiredFrames) {
+      if (sampleCursor >= curveSamples.length - 1) {
         pauseAnimation();
       }
     }
@@ -1374,39 +1482,18 @@
     }
 
     function bakeInstan() {
-      if (!turnTable || !pena) return;
+      if (!turnTable || !pena || curveSamples.length < 2) return;
       pauseAnimation();
       clearPaper();
 
-      const totalF = Math.min(requiredFrames || 10000, 100000);
-      let pxOld = 0, pyOld = 0;
-
-      for (let f = 0; f <= totalF; f++) {
-        turnTable.crank(f * crankSpeed);
-        const nib = pena.getPosition();
-        const dx = nib.x - WS / 2;
-        const dy = nib.y - HS / 2;
-        const a = Math.atan2(dy, dx);
-        const l = Math.sqrt(dx * dx + dy * dy);
-        const px = WS / 2 + Math.cos(a - turnTable.rotation) * l;
-        const py = HS / 2 + Math.sin(a - turnTable.rotation) * l;
-
-        if (f === 0) {
-          pxOld = px;
-          pyOld = py;
-        } else {
-          paperCtx.strokeStyle = colorScheme(f, totalF, actualCycles);
-          paperCtx.lineWidth = strokeWidth;
-          paperCtx.beginPath();
-          paperCtx.moveTo(pxOld, pyOld);
-          paperCtx.lineTo(px, py);
-          paperCtx.stroke();
-          pxOld = px;
-          pyOld = py;
-        }
+      for (let i = 1; i < curveSamples.length; i++) {
+        drawCurveSegment(paperCtx, curveSamples[i - 1], curveSamples[i]);
       }
 
-      myFrameCount = totalF;
+      sampleCursor = curveSamples.length - 1;
+      myFrameCount = sampleCursor;
+      const last = curveSamples[sampleCursor];
+      turnTable.crank(last.angle);
       updateUIStatus();
 
       if (showRig) {
@@ -1414,6 +1501,83 @@
       } else {
         overlayCtx.clearRect(0, 0, WS, HS);
       }
+    }
+
+    function escapeXml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&apos;");
+    }
+
+    function svgPoint(value) {
+      return Number(value.toFixed(4));
+    }
+
+    function curveTangentAt(index) {
+      const lastIndex = curveSamples.length - 1;
+      if ((index === 0 || index === lastIndex) && lastIndex > 2) {
+        const before = curveSamples[lastIndex - 1];
+        const after = curveSamples[1];
+        const wrappedDelta = Math.max(1e-10,
+          (curveSamples[lastIndex].angle - before.angle) + after.angle
+        );
+        return {
+          x: (after.x - before.x) / wrappedDelta,
+          y: (after.y - before.y) / wrappedDelta
+        };
+      }
+      const before = curveSamples[Math.max(0, index - 1)];
+      const after = curveSamples[Math.min(lastIndex, index + 1)];
+      const delta = Math.max(1e-10, after.angle - before.angle);
+      return {
+        x: (after.x - before.x) / delta,
+        y: (after.y - before.y) / delta
+      };
+    }
+
+    function buildSvgDocument() {
+      if (curveSamples.length < 2) return "";
+
+      const paths = [];
+      for (let i = 0; i < curveSamples.length - 1; i++) {
+        const from = curveSamples[i];
+        const to = curveSamples[i + 1];
+        const delta = to.angle - from.angle;
+        const tangentFrom = curveTangentAt(i);
+        const tangentTo = curveTangentAt(i + 1);
+        const c1x = from.x + tangentFrom.x * delta / 3;
+        const c1y = from.y + tangentFrom.y * delta / 3;
+        const c2x = to.x - tangentTo.x * delta / 3;
+        const c2y = to.y - tangentTo.y * delta / 3;
+        const [r, g, b] = paletteColorAtAngle(to.angle);
+        const d = `M ${svgPoint(from.x)} ${svgPoint(from.y)} C ${svgPoint(c1x)} ${svgPoint(c1y)} ${svgPoint(c2x)} ${svgPoint(c2y)} ${svgPoint(to.x)} ${svgPoint(to.y)}`;
+        paths.push(`<path d="${d}" stroke="rgb(${r},${g},${b})"/>`);
+      }
+
+      const formula = escapeXml(susunStringToken());
+      return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${WS}" height="${HS}" viewBox="0 0 ${WS} ${HS}" shape-rendering="geometricPrecision">
+  <title>Cycloid V5</title>
+  <desc>Adaptive vector export with transparent background. RIG: ${formula}</desc>
+  <g fill="none" stroke-width="${strokeWidth}" stroke-opacity="0.55" stroke-linecap="butt" stroke-linejoin="round">
+    ${paths.join("\n    ")}
+  </g>
+</svg>`;
+    }
+
+    function exportSvg() {
+      const svg = buildSvgDocument();
+      if (!svg) return;
+      const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.download = `cycloid-v5-${Date.now()}.svg`;
+      link.href = url;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
     }
 
     function animLoop() {
@@ -1424,6 +1588,7 @@
 
     function startAnimation() {
       if (isPlaying) return;
+      if (sampleCursor >= curveSamples.length - 1) clearPaper();
       isPlaying = true;
       document.getElementById("playIcon").innerHTML = "&#10074;&#10074;";
       document.getElementById("playText").innerText = "Pause";
@@ -1598,6 +1763,8 @@
       link.click();
     });
 
+    document.getElementById("btnExportSvg").addEventListener("click", exportSvg);
+
     document.getElementById("chkShowRig").addEventListener("change", (e) => {
       showRig = e.target.checked;
       if (!showRig) overlayCtx.clearRect(0, 0, WS, HS);
@@ -1606,7 +1773,6 @@
 
     document.getElementById("rngSpeed").addEventListener("input", (e) => {
       speedFactor = parseInt(e.target.value);
-      crankSpeed = (TWO_PI / 720) * speedFactor;
       document.getElementById("lblSpeed").innerText = `${speedFactor}x`;
     });
 
